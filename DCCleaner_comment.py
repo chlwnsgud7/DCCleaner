@@ -1,5 +1,4 @@
 from bs4 import BeautifulSoup
-import js2py
 import json
 import lxml.html
 import pyperclip
@@ -7,42 +6,36 @@ import re
 import requests
 import time
 
-# JS For decoding Service Code
-decode_service_code = '''
-    function get_service_code(service_code, r_value){
-    var a,e,n,t,f,d,h,i = "yL/M=zNa0bcPQdReSfTgUhViWjXkYIZmnpo+qArOBs1Ct2D3uE4Fv5G6wHl78xJ9K",
-    o = "",
-    c = 0;
-    for (r_value = r_value.replace(/[^A-Za-z0-9+/=]/g,""); c < r_value.length;) {
-        t = i.indexOf(r_value.charAt(c++));
-        f = i.indexOf(r_value.charAt(c++));
-        d = i.indexOf(r_value.charAt(c++));
-        h = i.indexOf(r_value.charAt(c++));
-        a = t << 2 | f >> 4;
-        e = (15 & f) << 4 | d >> 2;
-        n = (3 & d) << 6 | h;
-        o += String.fromCharCode(a);
-        64 != d && (o += String.fromCharCode(e));
-        64 != h && (o += String.fromCharCode(n));
-        }
-        var tvl = o;
-        var fi = parseInt(tvl.substr(0,1));
-        fi = fi > 5 ? fi - 5 : fi + 4;
-        var _r = tvl.replace(/^./, fi);
-        var _rs = _r.split(",");
-        var replace = "";
-        for (e = 0; e < _rs.length; e++) replace += String.fromCharCode(2 * (_rs[e] - e - 1) / (13 - e - 1));
-        return service_code.replace(/(.{10})$/, replace)
-    }
-    '''
-decode_service_code = js2py.eval_js(decode_service_code)
-
 # Make New Login Session
 sess = requests.Session()
 sess.headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Whale/2.8.107.16 Safari/537.36"
 }
 
+
+# JS For decoding Service Code
+def decodeServiceCode(_svc, _r):
+    _r_key = 'yL/M=zNa0bcPQdReSfTgUhViWjXkYIZmnpo+qArOBs1Ct2D3uE4Fv5G6wHl78xJ9K'
+    _r = re.sub('[^A-Za-z0-9+/=]', '', _r)
+
+    tmp = ''
+    i = 0
+    for a in [_r[i * 4:(i + 1) * 4] for i in range((len(_r) + 3) // 4)]:
+        t, f, d, h = [_r_key.find(x) for x in a]
+        tmp += chr(t << 2 | f >> 4)
+        if d != 64:
+            tmp += chr((15 & f) << 4 | (d >> 2))
+        if h != 64:
+            tmp += chr((3 & d) << 6 | h)
+    _r = str(int(tmp[0]) + 4) + tmp[1:]
+    if int(tmp[0]) > 5:
+        _r = str(int(tmp[0]) - 5) + tmp[1:]
+
+    _r = [float(x) for x in _r.split(',')]
+    t = ''
+    for i in range(len(_r)):
+        t += chr(int(2 * (_r[i] - i - 1) / (13 - i - 1)))
+    return _svc[0:len(_svc) - 10] + t
 
 def delete_comment(dcid, gall_url):
     # COMMENT DELETE Headers
@@ -71,7 +64,7 @@ def delete_comment(dcid, gall_url):
     hidden_svc_code = comments_parsed.xpath('//*[@id="container"]/article/div/section/div[1]/input')[0].get("value")
 
     # Generate Service Code
-    svc_code = decode_service_code(hidden_svc_code, hidden_r)
+    svc_code = decodeServiceCode(hidden_svc_code, hidden_r)
 
     # Get Comment Information
     comment_gall = comments_parsed.xpath('//*[@id="container"]/article/div/section/div[1]/div/ul/li[1]/div[3]/span/a')[
