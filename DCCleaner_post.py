@@ -168,7 +168,7 @@ def select_gall_list(dcid):
     for i in range(len(gall_list)):
         print(str(i) + " - " + gall_list[i])
 
-    select_no = int(input("댓글 삭제를 원하는 갤러리의 번호를 입력해주세요 : "))
+    select_no = int(input("게시글 삭제를 원하는 갤러리의 번호를 입력해주세요 : "))
     if select_no == 0:
         print("\n전체 삭제를 선택하셨습니다.")
     else:
